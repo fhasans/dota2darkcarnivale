@@ -539,6 +539,19 @@
             width: 32px;
             height: 32px;
             object-fit: contain;
+            transition: all 0.2s;
+        }
+        
+        .card-ticket-icon.highlight-glow {
+            filter: drop-shadow(0 0 6px var(--accent-gold)) brightness(1.2);
+            transform: scale(1.15);
+            z-index: 2;
+            position: relative;
+        }
+        
+        .card-ticket-icon.dimmed-ticket {
+            opacity: 0.3;
+            filter: grayscale(80%);
         }
 
         /* Trade Page */
@@ -1106,7 +1119,13 @@ zeus = the fool 2x, the devil 1x`;
             let ticketsHtml = '';
             hero.tickets.forEach(t => {
                 for(let i=0; i<t.count; i++) {
-                    ticketsHtml += `<img src="${ticketImages[t.name]}" title="${t.name}" class="card-ticket-icon">`;
+                    const isMatch = lookingFor.includes(t.name);
+                    const isDimmed = lookingFor.length > 0 && !isMatch;
+                    let stateClass = '';
+                    if (isMatch) stateClass = 'highlight-glow';
+                    else if (isDimmed) stateClass = 'dimmed-ticket';
+                    
+                    ticketsHtml += `<img src="${ticketImages[t.name]}" title="${t.name}" class="card-ticket-icon ${stateClass}">`;
                 }
             });
 
