@@ -1173,12 +1173,14 @@ zeus = the fool 2x, the devil 1x`;
                     hero.tickets.some(t => t.name === lf)
                 );
 
-                if (isPinned) {
-                    pinnedGrid.appendChild(createHeroCard(hero));
-                    pinnedCount++;
-                } else if (matchesSearch && matchesRole && matchesLookingFor) {
-                    mainGrid.appendChild(createHeroCard(hero));
-                    visibleCount++;
+                if (matchesSearch && matchesRole && matchesLookingFor) {
+                    if (isPinned) {
+                        pinnedGrid.appendChild(createHeroCard(hero));
+                        pinnedCount++;
+                    } else {
+                        mainGrid.appendChild(createHeroCard(hero));
+                        visibleCount++;
+                    }
                 }
             });
 
