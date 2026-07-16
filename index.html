@@ -643,42 +643,13 @@
         <div class="nav-tabs">
             <div class="nav-tab active" data-target="tracker-view">Tracker</div>
             <div class="nav-tab" data-target="trade-view">Trade Cards</div>
+            <div class="nav-tab" data-target="smelter-view">Smelter Targets</div>
         </div>
 
         <div id="tracker-sidebar">
-            <div class="section-title">My Inventory</div>
-            <div class="inventory-list" id="inventory-inputs">
-                <!-- Populated by JS -->
-            </div>
-            <button class="btn" id="save-inventory-btn" style="margin-top: 15px; margin-bottom: 25px;">Save Inventory</button>
-
-            <!-- New Target Division -->
-            <div class="section-title">Targets</div>
-            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">Add target tickets:</div>
-            
-            <div style="display: flex; gap: 5px; margin-bottom: 10px; height: 35px;">
-                <div class="custom-select" id="custom-target-select">
-                    <div class="selected-option" id="selected-option-view">
-                        <!-- Populated by JS -->
-                    </div>
-                    <div class="options-container" id="target-options-container">
-                        <!-- Populated by JS -->
-                    </div>
-                </div>
-                <input type="number" id="target-ticket-amount" value="1" min="1" style="margin:0; padding:5px; flex:1;">
-                <button class="btn btn-gold" id="add-target-btn" style="margin:0; padding:5px; flex:1;">Add</button>
-            </div>
-            
-            <button class="btn" id="clear-target-btn" style="margin-top:0; margin-bottom:15px; padding:5px; background:var(--bg-dark); border: 1px solid var(--border-color); color:var(--text-muted);">Clear Targets</button>
-            
-            <div id="target-icon-display" style="display: flex; flex-wrap: wrap; gap: 5px;">
-                <!-- Icons populated by JS -->
-            </div>
-            
-            <div style="font-size: 11px; color: var(--text-muted); margin-top: 15px; font-style: italic;">
-                * Click any icon to remove it from targets.<br>
-                * Glowing border means the target is met.
-            </div>
+            <div class="section-title">Tracker Help</div>
+            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">Filter and search for heroes to find specific ticket drops.</p>
+            <p style="font-size: 12px; color: var(--text-muted);">Pin your favorite heroes to keep them at the top.</p>
         </div>
         
         <div id="trade-sidebar" style="display: none;">
@@ -763,6 +734,52 @@
                         <div class="trade-rule-title">Rule 3: Trade 6 Scraps</div>
                         <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 15px;">Use 6 scrap cards to craft 1 chosen ticket.</p>
                         <div id="rule3-status"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Smelter View -->
+        <div class="view-container" id="smelter-view">
+            <!-- Navbar: Target Chips & Active Targets -->
+            <div class="top-filters-container">
+                <div class="top-filters-row">
+                    <span class="filter-label">Add Target:</span>
+                    <div class="looking-for-select" id="smelter-target-chips">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+                <div class="top-filters-row" style="align-items: center; justify-content: space-between;">
+                    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                        <span class="filter-label">Current Targets:</span>
+                        <div id="target-icon-display" style="display: flex; flex-wrap: wrap; gap: 5px;">
+                            <!-- Icons populated by JS -->
+                        </div>
+                    </div>
+                    <button class="btn btn-gold" id="clear-target-btn" style="margin: 0; padding: 5px 15px; width: auto; font-size: 12px;">Clear Targets</button>
+                </div>
+            </div>
+
+            <div class="view-content-scroll">
+                <div class="hero-section">
+                    <div class="hero-section-title">Smelter Hero Pool</div>
+                    <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 20px;">Heroes shown here drop 3 of your target ticket. Win them to fulfill your target!</p>
+                    <div class="hero-grid" id="smelter-grid">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <div class="hero-section" style="margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border-color);">
+                    <div class="hero-section-title">My Inventory</div>
+                    <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 15px; flex-wrap: wrap;">
+                        <label class="checkbox-label" id="enable-inventory-label">
+                            <input type="checkbox" id="enable-inventory-toggle"> Enable Manual Input
+                        </label>
+                        <button class="btn btn-gold" id="reset-inventory-btn" style="margin: 0; padding: 5px 15px; width: auto; font-size: 12px;">Reset Inventory</button>
+                        <button class="btn" id="save-inventory-btn" style="margin: 0; padding: 5px 15px; width: auto; font-size: 12px;">Save Inventory</button>
+                    </div>
+                    <div class="inventory-list" id="inventory-inputs">
+                        <!-- Populated by JS -->
                     </div>
                 </div>
             </div>
@@ -1000,12 +1017,15 @@ zeus = the fool 2x, the devil 1x`;
             const container = document.getElementById('inventory-inputs');
             container.innerHTML = '';
             
+            const toggle = document.getElementById('enable-inventory-toggle');
+            const isManualEnabled = toggle ? toggle.checked : false;
+            
             allTickets.forEach(ticket => {
                 const div = document.createElement('div');
                 div.className = 'inventory-item';
                 div.innerHTML = `
                     <img src="${ticketImages[ticket]}" alt="${ticket}" title="${ticket}">
-                    <input type="number" min="0" data-ticket="${ticket}" value="${inventory[ticket]}">
+                    <input type="number" min="0" data-ticket="${ticket}" value="${inventory[ticket]}" ${isManualEnabled ? '' : 'disabled'}>
                 `;
                 container.appendChild(div);
             });
@@ -1035,45 +1055,31 @@ zeus = the fool 2x, the devil 1x`;
             });
         }
         
-        function renderTargetDropdown() {
-            const selectedView = document.getElementById('selected-option-view');
-            const optionsContainer = document.getElementById('target-options-container');
+        function renderSmelterChips() {
+            const container = document.getElementById('smelter-target-chips');
+            container.innerHTML = '';
             
-            // Render selected option (Icon + Name + carets)
-            selectedView.innerHTML = `
-                <div style="display:flex; align-items:center;">
-                    <img src="${ticketImages[currentTargetSelection]}" alt="${currentTargetSelection}"> 
-                    <span style="font-size:12px; margin-left:5px;">${currentTargetSelection}</span>
-                </div>
-                <span style="font-size:10px; color:var(--text-muted)">▼</span>
-            `;
-            
-            // Render options list
-            optionsContainer.innerHTML = '';
-            allTickets.forEach(t => {
-                const opt = document.createElement('div');
-                opt.className = 'custom-option';
-                opt.innerHTML = `<img src="${ticketImages[t]}" alt="${t}"> <span style="font-size:12px;">${t}</span>`;
-                opt.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    currentTargetSelection = t;
-                    renderTargetDropdown();
-                    optionsContainer.classList.remove('active');
+            allTickets.forEach(ticket => {
+                const div = document.createElement('div');
+                div.className = 'looking-for-item';
+                div.title = "Add " + ticket + " to targets";
+                div.innerHTML = `<img src="${ticketImages[ticket]}" alt="${ticket}">`;
+                
+                div.addEventListener('click', () => {
+                    const currentAmt = targetData[ticket] || 0;
+                    const amountStr = prompt(`How many '${ticket}' targets do you want to add?`, "1");
+                    if (amountStr !== null) {
+                        const amount = parseInt(amountStr);
+                        if (!isNaN(amount) && amount > 0) {
+                            targetData[ticket] = currentAmt + amount;
+                            saveTargets();
+                            renderTargetDisplay();
+                            filterSmelterHeroes();
+                        }
+                    }
                 });
-                optionsContainer.appendChild(opt);
-            });
-            
-            // Toggle dropdown logic
-            selectedView.onclick = () => {
-                optionsContainer.classList.toggle('active');
-            };
-            
-            // Close dropdown if clicking outside of it
-            document.addEventListener('click', (e) => {
-                const selectElement = document.getElementById('custom-target-select');
-                if (selectElement && !selectElement.contains(e.target)) {
-                    optionsContainer.classList.remove('active');
-                }
+                
+                container.appendChild(div);
             });
         }
         
@@ -1083,6 +1089,10 @@ zeus = the fool 2x, the devil 1x`;
             
             Object.keys(targetData).forEach(ticket => {
                 const targetAmt = targetData[ticket];
+                if (targetAmt <= 0) {
+                    delete targetData[ticket];
+                    return;
+                }
                 const invAmt = inventory[ticket] || 0;
                 const isMet = invAmt >= targetAmt;
                 
@@ -1099,6 +1109,7 @@ zeus = the fool 2x, the devil 1x`;
                     delete targetData[ticket];
                     saveTargets();
                     renderTargetDisplay();
+                    filterSmelterHeroes();
                 });
                 
                 container.appendChild(wrapper);
@@ -1107,6 +1118,87 @@ zeus = the fool 2x, the devil 1x`;
         
         function saveTargets() {
             localStorage.setItem('darkCarnivalTargets', JSON.stringify(targetData));
+        }
+
+        function createSmelterHeroCard(hero, ticketName, targetAmt) {
+            const card = document.createElement('div');
+            card.className = `hero-card`;
+            
+            const imgUrl = `https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/heroes/${hero.cdnName}.png`;
+            
+            let ticketsHtml = '';
+            hero.tickets.forEach(t => {
+                for(let i=0; i<t.count; i++) {
+                    let stateClass = '';
+                    if (t.name === ticketName) stateClass = 'highlight-glow';
+                    else stateClass = 'dimmed-ticket';
+                    ticketsHtml += `<img src="${ticketImages[t.name]}" title="${t.name}" class="card-ticket-icon ${stateClass}">`;
+                }
+            });
+
+            // Target badge in top left
+            card.innerHTML = `
+                <div style="position:absolute; top:5px; left:5px; background:rgba(0,0,0,0.8); color:var(--accent-gold); font-size:12px; font-weight:bold; width:24px; height:24px; display:flex; align-items:center; justify-content:center; border-radius:50%; z-index:2; border:1px solid var(--accent-gold);">${targetAmt}</div>
+                <div class="hero-img-container">
+                    <img class="hero-img" src="${imgUrl}" alt="${hero.name}" onerror="this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='">
+                </div>
+                <div class="hero-info">
+                    <div class="hero-name">${hero.name}</div>
+                    <div class="ticket-list-horizontal">
+                        ${ticketsHtml}
+                    </div>
+                    <button class="btn btn-gold win-btn" style="margin-top: 10px; padding: 5px; font-size: 12px; width: 100%;">Win & Claim</button>
+                </div>
+            `;
+
+            card.querySelector('.win-btn').addEventListener('click', (e) => {
+                e.stopPropagation();
+                
+                if (targetData[ticketName]) {
+                    targetData[ticketName]--;
+                    if (targetData[ticketName] <= 0) {
+                        delete targetData[ticketName];
+                    }
+                    saveTargets();
+                }
+                
+                hero.tickets.forEach(t => {
+                    inventory[t.name] = (inventory[t.name] || 0) + t.count;
+                });
+                
+                saveInventory(); 
+                renderInventoryInputs();
+                filterSmelterHeroes();
+            });
+
+            return card;
+        }
+
+        function filterSmelterHeroes() {
+            const grid = document.getElementById('smelter-grid');
+            if (!grid) return;
+            grid.innerHTML = '';
+            
+            let targetsPresent = false;
+            
+            Object.keys(targetData).forEach(ticketName => {
+                const targetAmt = targetData[ticketName];
+                if (targetAmt > 0) {
+                    targetsPresent = true;
+                    heroes.forEach(hero => {
+                        const has3x = hero.tickets.some(t => t.name === ticketName && t.count >= 3);
+                        if (has3x) {
+                            grid.appendChild(createSmelterHeroCard(hero, ticketName, targetAmt));
+                        }
+                    });
+                }
+            });
+            
+            if (!targetsPresent) {
+                grid.innerHTML = '<div style="grid-column: 1 / -1; color: var(--text-muted); text-align: center; padding: 20px;">No targets set. Add a target to see available heroes.</div>';
+            } else if (grid.innerHTML === '') {
+                grid.innerHTML = '<div style="grid-column: 1 / -1; color: var(--text-muted); text-align: center; padding: 20px;">No heroes drop 3 of your targeted tickets.</div>';
+            }
         }
 
         function createHeroCard(hero) {
@@ -1287,14 +1379,15 @@ zeus = the fool 2x, the devil 1x`;
             parseData();
             renderInventoryInputs();
             renderLookingForSelect();
-            renderTargetDropdown();
+            renderSmelterChips();
             renderTargetDisplay();
             filterHeroes();
+            filterSmelterHeroes();
             updateTradePage();
 
             document.getElementById('search-input').addEventListener('input', filterHeroes);
             
-            document.querySelectorAll('.checkbox-label input').forEach(cb => {
+            document.querySelectorAll('.checkbox-label input[type="checkbox"]:not(#enable-inventory-toggle)').forEach(cb => {
                 cb.addEventListener('change', function() {
                     this.parentElement.classList.toggle('active', this.checked);
                     filterHeroes();
@@ -1303,18 +1396,25 @@ zeus = the fool 2x, the devil 1x`;
 
             document.getElementById('save-inventory-btn').addEventListener('click', saveInventory);
             
-            document.getElementById('add-target-btn').addEventListener('click', () => {
-                const t = currentTargetSelection;
-                const amt = parseInt(document.getElementById('target-ticket-amount').value) || 1;
-                targetData[t] = (targetData[t] || 0) + amt;
-                saveTargets();
-                renderTargetDisplay();
-            });
-            
             document.getElementById('clear-target-btn').addEventListener('click', () => {
                 targetData = {};
                 saveTargets();
                 renderTargetDisplay();
+                filterSmelterHeroes();
+            });
+            
+            document.getElementById('enable-inventory-toggle').addEventListener('change', function() {
+                this.parentElement.classList.toggle('active', this.checked);
+                renderInventoryInputs();
+            });
+            
+            document.getElementById('reset-inventory-btn').addEventListener('click', () => {
+                if(confirm("Are you sure you want to reset all inventory counts?")) {
+                    allTickets.forEach(t => inventory[t] = 0);
+                    saveInventory();
+                    renderInventoryInputs();
+                    renderTargetDisplay();
+                }
             });
 
             document.querySelectorAll('.nav-tab').forEach(tab => {
@@ -1330,6 +1430,9 @@ zeus = the fool 2x, the devil 1x`;
                         document.getElementById('tracker-sidebar').style.display = 'none';
                         document.getElementById('trade-sidebar').style.display = 'block';
                         updateTradePage(); 
+                    } else if (target === 'smelter-view') {
+                        document.getElementById('tracker-sidebar').style.display = 'none';
+                        document.getElementById('trade-sidebar').style.display = 'none';
                     } else {
                         document.getElementById('tracker-sidebar').style.display = 'block';
                         document.getElementById('trade-sidebar').style.display = 'none';
