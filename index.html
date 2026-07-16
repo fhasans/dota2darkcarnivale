@@ -762,10 +762,23 @@
 
             <div class="view-content-scroll">
                 <div class="hero-section">
-                    <div class="hero-section-title">Smelter Hero Pool</div>
-                    <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 20px;">Heroes shown here drop 3 of your target ticket. Win them to fulfill your target!</p>
-                    <div class="hero-grid" id="smelter-grid">
-                        <!-- Populated by JS -->
+                    <div class="nav-tabs" style="margin-bottom: 20px; border-radius: 4px;">
+                        <div class="nav-tab active" id="tab-smelter-pool" style="padding: 8px;">Smelter Hero Pool</div>
+                        <div class="nav-tab" id="tab-smelter-pinned" style="padding: 8px;">Pinned Heroes</div>
+                    </div>
+                    
+                    <div id="smelter-pool-content">
+                        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 20px;">Heroes shown here drop 3 of your target ticket. Win them to fulfill your target!</p>
+                        <div class="hero-grid" id="smelter-grid">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                    
+                    <div id="smelter-pinned-content" style="display: none;">
+                        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 20px;">Your pinned heroes. Select a ticket on the card, then click Win & Claim to add 1 to your inventory.</p>
+                        <div class="hero-grid" id="smelter-pinned-grid">
+                            <!-- Populated by JS -->
+                        </div>
                     </div>
                 </div>
 
@@ -1162,13 +1175,88 @@ zeus = the fool 2x, the devil 1x`;
                     saveTargets();
                 }
                 
-                hero.tickets.forEach(t => {
-                    inventory[t.name] = (inventory[t.name] || 0) + t.count;
-                });
+                // Add 1 ticket of the target type
+                inventory[ticketName] = (inventory[ticketName] || 0) + 1;
                 
-                saveInventory(); 
+                syncInventoryToStorage(); 
                 renderInventoryInputs();
                 filterSmelterHeroes();
+            });
+
+            return card;
+        }
+
+        function createSmelterPinnedCard(hero) {
+            const card = document.createElement('div');
+            card.className = `hero-card pinned`;
+            
+            const imgUrl = `https://cdn.cloudflare.steamstatic.com/apps/dota2/images/dota_react/heroes/${hero.cdnName}.png`;
+            
+            let ticketsHtml = '';
+            hero.tickets.forEach(t => {
+                for(let i=0; i<t.count; i++) {
+                    ticketsHtml += `<img src="${ticketImages[t.name]}" title="${t.name}" data-ticket-name="${t.name}" class="card-ticket-icon selectable-ticket" style="cursor: pointer; opacity: 0.6; transition: all 0.2s;">`;
+                }
+            });
+
+            card.innerHTML = `
+                <div class="hero-img-container">
+                    <img class="hero-img" src="${imgUrl}" alt="${hero.name}" onerror="this.src='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='">
+                </div>
+                <div class="hero-info">
+                    <div class="hero-name">${hero.name}</div>
+                    <div class="ticket-list-horizontal">
+                        ${ticketsHtml}
+                    </div>
+                    <button class="btn btn-gold win-btn" style="margin-top: 10px; padding: 5px; font-size: 12px; width: 100%; opacity: 0.5; cursor: not-allowed;" disabled>Win & Claim</button>
+                </div>
+            `;
+
+            let selectedTicket = null;
+            const winBtn = card.querySelector('.win-btn');
+            
+            const ticketIcons = card.querySelectorAll('.selectable-ticket');
+            ticketIcons.forEach(icon => {
+                icon.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    ticketIcons.forEach(ic => {
+                        ic.style.opacity = '0.6';
+                        ic.classList.remove('highlight-glow');
+                    });
+                    
+                    icon.style.opacity = '1';
+                    icon.classList.add('highlight-glow');
+                    selectedTicket = icon.dataset.ticketName;
+                    
+                    winBtn.disabled = false;
+                    winBtn.style.opacity = '1';
+                    winBtn.style.cursor = 'pointer';
+                });
+            });
+
+            winBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (selectedTicket) {
+                    inventory[selectedTicket] = (inventory[selectedTicket] || 0) + 1;
+                    syncInventoryToStorage();
+                    renderInventoryInputs();
+                    renderTargetDisplay();
+                    
+                    // Reset selection
+                    selectedTicket = null;
+                    ticketIcons.forEach(ic => {
+                        ic.style.opacity = '0.6';
+                        ic.classList.remove('highlight-glow');
+                    });
+                    winBtn.disabled = true;
+                    winBtn.style.opacity = '0.5';
+                    winBtn.style.cursor = 'not-allowed';
+                    
+                    const toast = document.getElementById('toast');
+                    toast.textContent = "1 " + selectedTicket + " added!";
+                    toast.style.opacity = '1';
+                    setTimeout(() => { toast.style.opacity = '0'; toast.textContent = "Inventory Saved!"; }, 2000);
+                }
             });
 
             return card;
@@ -1199,6 +1287,26 @@ zeus = the fool 2x, the devil 1x`;
             } else if (grid.innerHTML === '') {
                 grid.innerHTML = '<div style="grid-column: 1 / -1; color: var(--text-muted); text-align: center; padding: 20px;">No heroes drop 3 of your targeted tickets.</div>';
             }
+            
+            // Also render pinned heroes
+            renderSmelterPinnedHeroes();
+        }
+
+        function renderSmelterPinnedHeroes() {
+            const pinnedGrid = document.getElementById('smelter-pinned-grid');
+            if (!pinnedGrid) return;
+            pinnedGrid.innerHTML = '';
+            
+            if (pinnedHeroes.length === 0) {
+                pinnedGrid.innerHTML = '<div style="grid-column: 1 / -1; color: var(--text-muted); text-align: center; padding: 20px;">No heroes pinned. Pin heroes in the Tracker tab to see them here.</div>';
+                return;
+            }
+            
+            heroes.forEach(hero => {
+                if (pinnedHeroes.includes(hero.name)) {
+                    pinnedGrid.appendChild(createSmelterPinnedCard(hero));
+                }
+            });
         }
 
         function createHeroCard(hero) {
@@ -1291,21 +1399,30 @@ zeus = the fool 2x, the devil 1x`;
             }
             localStorage.setItem('darkCarnivalPinned', JSON.stringify(pinnedHeroes));
             filterHeroes();
+            renderSmelterPinnedHeroes();
         }
 
-        function saveInventory() {
+        function syncInventoryToStorage() {
+            localStorage.setItem('darkCarnivalInventory', JSON.stringify(inventory));
+            updateTradePage();
+            renderTargetDisplay();
+        }
+
+        function readInventoryFromDOM() {
             const inputs = document.querySelectorAll('#inventory-inputs input');
             inputs.forEach(input => {
                 inventory[input.dataset.ticket] = parseInt(input.value) || 0;
             });
-            localStorage.setItem('darkCarnivalInventory', JSON.stringify(inventory));
+        }
+
+        function saveInventory() {
+            readInventoryFromDOM();
+            syncInventoryToStorage();
             
             const toast = document.getElementById('toast');
+            toast.textContent = "Inventory Saved!";
             toast.style.opacity = '1';
             setTimeout(() => { toast.style.opacity = '0'; }, 3000);
-            
-            updateTradePage();
-            renderTargetDisplay(); // Update targets since inventory changed
         }
 
         // --- TRADE PAGE LOGIC ---
@@ -1411,13 +1528,40 @@ zeus = the fool 2x, the devil 1x`;
             document.getElementById('reset-inventory-btn').addEventListener('click', () => {
                 if(confirm("Are you sure you want to reset all inventory counts?")) {
                     allTickets.forEach(t => inventory[t] = 0);
-                    saveInventory();
+                    syncInventoryToStorage();
                     renderInventoryInputs();
-                    renderTargetDisplay();
+                    
+                    const toast = document.getElementById('toast');
+                    toast.textContent = "Inventory Reset!";
+                    toast.style.opacity = '1';
+                    setTimeout(() => { toast.style.opacity = '0'; toast.textContent = "Inventory Saved!"; }, 3000);
                 }
             });
 
-            document.querySelectorAll('.nav-tab').forEach(tab => {
+            // Smelter Tabs
+            const tabPool = document.getElementById('tab-smelter-pool');
+            const tabPinned = document.getElementById('tab-smelter-pinned');
+            const contentPool = document.getElementById('smelter-pool-content');
+            const contentPinned = document.getElementById('smelter-pinned-content');
+
+            if (tabPool && tabPinned) {
+                tabPool.addEventListener('click', () => {
+                    tabPool.classList.add('active');
+                    tabPinned.classList.remove('active');
+                    contentPool.style.display = 'block';
+                    contentPinned.style.display = 'none';
+                });
+
+                tabPinned.addEventListener('click', () => {
+                    tabPinned.classList.add('active');
+                    tabPool.classList.remove('active');
+                    contentPinned.style.display = 'block';
+                    contentPool.style.display = 'none';
+                    renderSmelterPinnedHeroes();
+                });
+            }
+
+            document.querySelectorAll('.nav-tab[data-target]').forEach(tab => {
                 tab.addEventListener('click', () => {
                     document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
                     tab.classList.add('active');
