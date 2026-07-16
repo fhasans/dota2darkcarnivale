@@ -1212,38 +1212,64 @@ zeus = the fool 2x, the devil 1x`;
                 </div>
             `;
 
-            let selectedTicket = null;
+            let selectedTickets = [];
             const winBtn = card.querySelector('.win-btn');
             
             const ticketIcons = card.querySelectorAll('.selectable-ticket');
             ticketIcons.forEach(icon => {
                 icon.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    ticketIcons.forEach(ic => {
-                        ic.style.opacity = '0.6';
-                        ic.classList.remove('highlight-glow');
-                    });
                     
-                    icon.style.opacity = '1';
-                    icon.classList.add('highlight-glow');
-                    selectedTicket = icon.dataset.ticketName;
+                    const isSelected = icon.classList.contains('highlight-glow');
                     
-                    winBtn.disabled = false;
-                    winBtn.style.opacity = '1';
-                    winBtn.style.cursor = 'pointer';
+                    if (isSelected) {
+                        icon.style.opacity = '0.6';
+                        icon.classList.remove('highlight-glow');
+                        selectedTickets = selectedTickets.filter(ic => ic !== icon);
+                    } else {
+                        if (selectedTickets.length < 2) {
+                            icon.style.opacity = '1';
+                            icon.classList.add('highlight-glow');
+                            selectedTickets.push(icon);
+                        } else {
+                            const removed = selectedTickets.shift();
+                            removed.style.opacity = '0.6';
+                            removed.classList.remove('highlight-glow');
+                            
+                            icon.style.opacity = '1';
+                            icon.classList.add('highlight-glow');
+                            selectedTickets.push(icon);
+                        }
+                    }
+                    
+                    if (selectedTickets.length > 0) {
+                        winBtn.disabled = false;
+                        winBtn.style.opacity = '1';
+                        winBtn.style.cursor = 'pointer';
+                    } else {
+                        winBtn.disabled = true;
+                        winBtn.style.opacity = '0.5';
+                        winBtn.style.cursor = 'not-allowed';
+                    }
                 });
             });
 
             winBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                if (selectedTicket) {
-                    inventory[selectedTicket] = (inventory[selectedTicket] || 0) + 1;
+                if (selectedTickets.length > 0) {
+                    let messageParts = [];
+                    selectedTickets.forEach(ic => {
+                        const tName = ic.dataset.ticketName;
+                        inventory[tName] = (inventory[tName] || 0) + 1;
+                        messageParts.push(tName);
+                    });
+                    
                     syncInventoryToStorage();
                     renderInventoryInputs();
                     renderTargetDisplay();
                     
                     // Reset selection
-                    selectedTicket = null;
+                    selectedTickets = [];
                     ticketIcons.forEach(ic => {
                         ic.style.opacity = '0.6';
                         ic.classList.remove('highlight-glow');
@@ -1253,9 +1279,9 @@ zeus = the fool 2x, the devil 1x`;
                     winBtn.style.cursor = 'not-allowed';
                     
                     const toast = document.getElementById('toast');
-                    toast.textContent = "1 " + selectedTicket + " added!";
+                    toast.textContent = "Added: " + messageParts.join(", ");
                     toast.style.opacity = '1';
-                    setTimeout(() => { toast.style.opacity = '0'; toast.textContent = "Inventory Saved!"; }, 2000);
+                    setTimeout(() => { toast.style.opacity = '0'; toast.textContent = "Inventory Saved!"; }, 3000);
                 }
             });
 
